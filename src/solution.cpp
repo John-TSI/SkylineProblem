@@ -1,28 +1,50 @@
+#include<algorithm>
 #include"../inc/solution.hpp"
+
 
 // note: each vector<int> B represents a building: B[0] is left x coord, B[1] is right x coord, B[2] is y coord (height)
 std::vector<std::vector<int>> Solution::getSkyline(std::vector<std::vector<int>>& buildings)
 {
-    std::vector<std::vector<int>> skyline{{buildings[0][0], buildings[0][2]}};  // always at least this first coordinate
-    // if only one building, insert the terminating ground-level coord and return
-    if(buildings.size()==1){ skyline.push_back( {buildings[0][1], 0} ); return skyline; } 
-
-    int len = buildings.size();
-    for(int i{0}; i<len-1; ++i)  // iterate through buildings, implementing a pairwise comparison
+    std::vector<std::vector<int>> walls{}, skyline{};
+    std::vector<int> heights{0};
+    for(auto b : buildings)
     {
-        if(buildings[i][2] == buildings[i+1][2]){ continue; }  // new coords are introduced only when height changes
-        if(buildings[i+1][0] - buildings[i][1] > 0)  // if there is a gap separating two consecutive buildings
-        {  
-            skyline.push_back( {buildings[i][1], 0} );  // insert the ground-level coord
-            skyline.push_back( {buildings[i+1][0], buildings[i+1][2]} );  // insert the coord from the second building
-            continue;  // continue with pairwise comparisons, starting with the first building after the gap
-        }
-        // y coord is always given by height of second building in the pairwise comparison,
-        // x coord depends on whether first or second building is the taller of the two
-        (buildings[i][2] < buildings[i+1][2])
-        ? skyline.push_back( {buildings[i+1][0], buildings[i+1][2]} )
-        : skyline.push_back( {buildings[i][1], buildings[i+1][2]} );
+        walls.push_back( {b[0], b[2], 1});  // insert {x coord of left wall, height, tag = 1}
+        walls.push_back( {b[1], b[2], 0});  // insert {x coord of right wall, height, tag = 0}
     }
-    skyline.push_back( {buildings[len-1][1],0} );  // insert the terminating ground-level coord
+    // sort walls by ascending x coord
+    std::sort(walls.begin(), walls.end(), [](const auto& c1, const auto& c2){ return c1[0] < c2[0]; } );
+
+    // sort coinciding walls to ensure they are processed in the correct order
+    for(int i{0}; i<walls.size()-1; ++i)
+    {
+        if(walls[i][0] == walls[i+1][0])
+        { 
+            // both are left walls of their respective buildings (tagged with 1), ensure taller wall is processed first
+            if(walls[i][2] && walls[i+1][2] && walls[i][1] < walls[i+1][1]){ std::swap(walls[1], walls[i+1]); }
+            // both are right walls of their respective buildings (tagged with 0), ensure lower wall is processed first
+            else if(!walls[i][2] && !walls[i+1][2] && walls[i][1] > walls[i+1][1]){ std::swap(walls[1], walls[i+1]); }
+            // a left and right wall coincide, ensure left wall is processed first
+            else{ if(walls[i][2] < walls[i+1][2]){ std::swap(walls[1], walls[i+1]); } }
+        }
+    }
+
+    // begin processing of walls
+    int maxHeight{0};
+    for(int i{0}; i<walls.size()-1; ++i)
+    {
+        if(walls[i][2]) // left wall
+        { 
+            heights.push_back(walls[i][1]); 
+            if(walls[i][1] > maxHeight){ maxHeight = walls[i][1]; skyline.push_back( {walls[i][0], maxHeight} ); }
+        }
+        else // right wall
+        {
+            int tmp{maxHeight};
+            heights.erase( std::find(heights.begin(), heights.end(), walls[i][1]) );
+            maxHeight = *std::max_element(heights.begin(), heights.end());
+            if(maxHeight != tmp){ skyline.push_back( {walls[i][0], maxHeight} );  }
+        }
+    }
     return skyline;
 }
