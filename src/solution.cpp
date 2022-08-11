@@ -21,28 +21,33 @@ std::vector<std::vector<int>> Solution::getSkyline(std::vector<std::vector<int>>
         if(walls[i][0] == walls[i+1][0])
         { 
             // both are left walls of their respective buildings (tagged with 1), ensure taller wall is processed first
-            if(walls[i][2] && walls[i+1][2] && walls[i][1] < walls[i+1][1]){ std::swap(walls[1], walls[i+1]); }
+            if(walls[i][2] && walls[i+1][2] && walls[i][1] < walls[i+1][1]){ std::swap(walls[i], walls[i+1]); }
+
             // both are right walls of their respective buildings (tagged with 0), ensure lower wall is processed first
-            else if(!walls[i][2] && !walls[i+1][2] && walls[i][1] > walls[i+1][1]){ std::swap(walls[1], walls[i+1]); }
+            else if(!walls[i][2] && !walls[i+1][2] && walls[i][1] > walls[i+1][1]){ std::swap(walls[i], walls[i+1]); }
+
             // a left and right wall coincide, ensure left wall is processed first
-            else{ if(walls[i][2] < walls[i+1][2]){ std::swap(walls[1], walls[i+1]); } }
+            else{ if(walls[i][2] < walls[i+1][2]){ std::swap(walls[i], walls[i+1]); } }
         }
     }
 
-    // begin processing of walls
+    // begin processing walls: idea is to keep track of heights encountered as we reach each wall, in particular the highest
     int maxHeight{0};
-    for(int i{0}; i<walls.size()-1; ++i)
+    for(int i{0}; i<walls.size(); ++i)
     {
-        if(walls[i][2]) // left wall
+        if(walls[i][2]) // left wall: start of new building and potentially a contributor to skyline
         { 
             heights.push_back(walls[i][1]); 
+            // if left wall is higher than current maxHeight, it is guaranteed to be part of skyline
             if(walls[i][1] > maxHeight){ maxHeight = walls[i][1]; skyline.push_back( {walls[i][0], maxHeight} ); }
         }
-        else // right wall
+        else // right wall: end of a building, need to determine whether it removes current maxHeight from encountered heights vector
         {
-            int tmp{maxHeight};
-            heights.erase( std::find(heights.begin(), heights.end(), walls[i][1]) );
+            int tmp{maxHeight};  // store current maxHeight
+            heights.erase( std::find(heights.begin(), heights.end(), walls[i][1]) );  // remove height of wall from the heights vec
             maxHeight = *std::max_element(heights.begin(), heights.end());
+            // if recomputed maxHeight has changed, then the right wall was end of current tallest building.
+            // next significant skyline point is then {x coord of the current wall, height of next tallest building}
             if(maxHeight != tmp){ skyline.push_back( {walls[i][0], maxHeight} );  }
         }
     }
